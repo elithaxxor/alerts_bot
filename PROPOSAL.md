@@ -43,3 +43,8 @@ These features would transform the script into a comprehensive, user‑friendly 
 - **Predictive Models**: Experiment with ML techniques to forecast short‑term price movements.
 - **Observability**: Add structured logging and metrics for easier troubleshooting and performance tuning.
 
+### Additional Roadmap Ideas
+- **Containerized Deployment**: Provide a Dockerfile for reproducible setups.
+- **OAuth Support**: Allow optional login via Google or GitHub for multi‑user access.
+- **Push Notifications**: Integrate mobile push or email alerts when new trades appear.
+- **Strategy Optimization**: Explore hyperparameter tuning techniques to refine screening criteria over time.

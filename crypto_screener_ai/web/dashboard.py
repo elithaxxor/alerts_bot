@@ -3,6 +3,9 @@ import os
 import random
 import sqlite3
 import logging
+import smtplib
+from email.message import EmailMessage
+import requests
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.responses import HTMLResponse
@@ -24,6 +27,49 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title='CryptoScreenerAI Dashboard')
 
 SENTIMENT_DATA = {'sentiment': 'neutral', 'score': 0.0}
+
+
+def send_push(message: str):
+    """Send a push notification using the Pushover service if configured."""
+    token = os.getenv('PUSHOVER_TOKEN')
+    user = os.getenv('PUSHOVER_USER')
+    if not token or not user:
+        return
+    try:
+        requests.post('https://api.pushover.net/1/messages.json', data={
+            'token': token,
+            'user': user,
+            'message': message,
+        }, timeout=10)
+    except Exception as exc:
+        logger.warning('Push notification failed: %s', exc)
+
+
+def send_email(subject: str, body: str):
+    """Send an email alert using SMTP if credentials are provided."""
+    host = os.getenv('SMTP_SERVER')
+    user = os.getenv('SMTP_USER')
+    password = os.getenv('SMTP_PASS')
+    to_addr = os.getenv('ALERT_EMAIL')
+    if not (host and user and password and to_addr):
+        return
+    try:
+        msg = EmailMessage()
+        msg['Subject'] = subject
+        msg['From'] = user
+        msg['To'] = to_addr
+        msg.set_content(body)
+        with smtplib.SMTP(host) as s:
+            s.starttls()
+            s.login(user, password)
+            s.send_message(msg)
+    except Exception as exc:
+        logger.warning('Email alert failed: %s', exc)
+
+
+def notify(message: str):
+    send_push(message)
+    send_email('CryptoScreenerAI Alert', message)
 
 
 def get_db():
@@ -94,7 +140,7 @@ def screener_job():
                      (js.get('run_id'), js.get('as_of'), data))
         conn.commit()
         conn.close()
-
+        notify(f"New screener results stored: {js.get('run_id')}")
 
 def fetch_sentiment():
     """Update global sentiment data (placeholder implementation)."""
