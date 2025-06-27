@@ -29,3 +29,22 @@ These features would transform the script into a comprehensive, user‑friendly 
 - **Automated Deployment**: Provide a simple `autorun.sh` script that installs dependencies and launches the dashboard on ports 9999 and 9998.
 - **Alerts**: Optional integration with Telegram or Discord webhooks to broadcast new screener results.
 - **Caching & Backtesting**: Store past responses in SQLite to enable quick backtests and offline access.
+
+
+### Additional Roadmap Ideas
+- **Containerized Deployment**: Provide a Dockerfile for reproducible setups.
+- **OAuth Support**: Allow optional login via Google or GitHub for multi‑user access.
+- **Push Notifications**: Integrate mobile push or email alerts when new trades appear.
+
+## 6. Future Enhancements
+- **TradingView Plugin**: Publish trading signals directly to TradingView or other charting platforms.
+- **Mobile Support**: Ensure the dashboard scales cleanly to phones and tablets with responsive layouts.
+- **Real‑time Sentiment Feed**: Incorporate streaming social and news sentiment to flag emerging events.
+- **Predictive Models**: Experiment with ML techniques to forecast short‑term price movements.
+- **Observability**: Add structured logging and metrics for easier troubleshooting and performance tuning.
+
+### Additional Roadmap Ideas
+- **Containerized Deployment**: Provide a Dockerfile for reproducible setups.
+- **OAuth Support**: Allow optional login via Google or GitHub for multi‑user access.
+- **Push Notifications**: Integrate mobile push or email alerts when new trades appear.
+- **Strategy Optimization**: Explore hyperparameter tuning techniques to refine screening criteria over time.

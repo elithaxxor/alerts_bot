@@ -6,3 +6,4 @@ requests
 openai
 plotly
 rich
+scikit-learn
