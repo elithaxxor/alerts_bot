@@ -28,6 +28,10 @@
       <button onclick="ask()">Send</button>
       <pre id="answer"></pre>
     </div>
+    <div class="widget" draggable="true" data-widget="analytics">
+      <h2>Analytics</h2>
+      <div id="chart" style="width:260px;height:200px;"></div>
+    </div>
   </div>
   <script>
     const KEY = 'demo';
@@ -76,6 +80,15 @@
       document.getElementById('pnl').textContent = JSON.stringify(data, null, 2);
     }
 
+    async function loadAnalytics() {
+      const resp = await fetch('/analytics/summary', {headers:{'X-API-Key': KEY}});
+      const data = await resp.json();
+      const symbols = Object.keys(data);
+      const scores = symbols.map(s => data[s]);
+      const trace = {x: symbols, y: scores, type: 'bar'};
+      Plotly.newPlot('chart', [trace], {margin:{t:30}});
+    }
+
     async function ask() {
       const q = document.getElementById('question').value;
       const resp = await fetch('/assistant', {
@@ -91,6 +104,7 @@
     enableDrag();
     loadLatest();
     loadPnl();
+    loadAnalytics();
   </script>
 </body>
 </html>

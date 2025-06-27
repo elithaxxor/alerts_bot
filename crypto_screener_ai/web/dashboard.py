@@ -454,6 +454,39 @@ async def backtest_export(symbol: str, days: int = 90, format: str = 'json', use
     return result
 
 
+def compute_analytics(limit: int = 5) -> dict:
+    """Aggregate momentum scores from recent screener runs."""
+    conn = get_db()
+    cur = conn.execute('SELECT data FROM results ORDER BY ts DESC LIMIT ?', (limit,))
+    rows = cur.fetchall()
+    conn.close()
+    scores: dict[str, list[float]] = {}
+    for row in rows:
+        js = json.loads(row[0])
+        for sym, windows in js.get('screener', {}).items():
+            for win in windows.values():
+                scores.setdefault(sym, []).append(float(win.get('momentum_score', 0)))
+    return {sym: (sum(vals) / len(vals)) if vals else 0.0 for sym, vals in scores.items()}
+
+
+@app.get('/analytics/summary')
+async def analytics_summary(limit: int = 5, key: str = Depends(require_key)):
+    """Return average momentum score per symbol for recent runs."""
+    return compute_analytics(limit)
+
+
+@app.get('/analytics/report')
+async def analytics_report(limit: int = 5, key: str = Depends(require_key)):
+    """Return simple report highlighting top momentum symbols."""
+    summary = compute_analytics(limit)
+    top = sorted(summary.items(), key=lambda x: abs(x[1]), reverse=True)[:5]
+    return {
+        'top_symbols': [
+            {'symbol': sym, 'avg_momentum': round(score, 3)} for sym, score in top
+        ]
+    }
+
+
 @app.post('/assistant')
 async def assistant(query: dict, key: str = Depends(require_key)):
     """Very small natural-language helper for portfolio queries."""
