@@ -243,6 +243,44 @@ async def portfolio_pnl(key: str = Depends(require_key)):
     return results
 
 
+@app.get('/portfolio/risk')
+async def portfolio_risk(key: str = Depends(require_key), days: int = 90):
+    """Return portfolio-level Sharpe ratio and max drawdown."""
+    conn = get_db()
+    cur = conn.execute('SELECT symbol, quantity FROM portfolio')
+    rows = cur.fetchall()
+    conn.close()
+    holdings = [{'symbol': r[0], 'quantity': r[1]} for r in rows]
+    if not holdings:
+        return {}
+    try:
+        from ..app import risk_metrics
+        metrics = risk_metrics.compute_portfolio_risk(holdings, days)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return metrics
+
+
+@app.get('/strategies')
+async def list_strategies():
+    """List available strategy files."""
+    files = []
+    strategy_dir = Path(__file__).resolve().parents[1] / 'strategies'
+    if strategy_dir.exists():
+        files = [f.name for f in strategy_dir.glob('*.py')]
+    return {'strategies': files}
+
+
+@app.get('/strategies/{name}')
+async def get_strategy(name: str):
+    """Return the contents of a strategy file."""
+    strategy_dir = Path(__file__).resolve().parents[1] / 'strategies'
+    path = strategy_dir / name
+    if not path.exists():
+        raise HTTPException(status_code=404, detail='Not found')
+    return {'name': name, 'code': path.read_text()}
+
+
 @app.get('/backtest/{symbol}')
 async def run_backtest_api(symbol: str, days: int = 90, key: str = Depends(require_key)):
     try:

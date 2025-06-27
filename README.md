@@ -159,5 +159,7 @@ results are stored:
 - **Real-Time WebSockets**: Subscribe to `/ws/results` for instant screener updates.
 - **Advanced Backtesting**: `/backtest/{symbol}` endpoint simulates strategies using historical prices.
 - **Portfolio Tracking**: Manage holdings via `/portfolio` and view PnL at `/portfolio/pnl`.
+- **Portfolio Risk Metrics**: `/portfolio/risk` returns Sharpe ratio and max drawdown for your holdings.
 - **iCloud Sync**: The macOS companion stores your watchlist in iCloud for seamless access.
 - **Auto-Update**: The companion app checks a remote JSON file and prompts when a newer version is available.
+- **Strategy Marketplace**: Browse sample strategies via `/strategies` and view details at `/strategies/{name}`.
