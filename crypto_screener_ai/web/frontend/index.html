@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>CryptoScreenerAI Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+  <h1>CryptoScreenerAI Dashboard</h1>
+  <div id="content"></div>
+  <script>
+    async function loadLatest() {
+      const resp = await fetch('/results/latest', {headers:{'X-API-Key': 'demo'}});
+      const data = await resp.json();
+      const pre = document.createElement('pre');
+      pre.textContent = JSON.stringify(data, null, 2);
+      document.getElementById('content').appendChild(pre);
+    }
+    loadLatest();
+  </script>
+</body>
+</html>
