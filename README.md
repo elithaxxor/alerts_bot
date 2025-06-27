@@ -145,9 +145,9 @@ Output strictly conforms to the schema.
 
 
 ## Autorun
-Run `./autorun.sh` to install dependencies from `requirements.txt` and launch
-the dashboard. The API starts on port **9999**, while static files are served on
-port **9998**.
+Run `./setup.sh` to install dependencies, run a quick security audit and
+launch the dashboard. The API starts on port **9999**, while static files are
+served on port **9998**.
 
 ### Alerts
 Set these optional environment variables for push/email notifications when new
@@ -172,5 +172,8 @@ results are stored:
 - **User Permissions**: Create API keys with roles via `/users` and restrict modifications to admins.
 - **Scheduling API**: Adjust screener frequency through `/schedule/screener`.
 - **Social Sentiment Feeds**: `/sentiment/posts` returns trending Reddit headlines.
+- **Automated Security Audits**: `/audit` checks strategies and dependencies for issues.
+- **Offline Mode**: set `OFFLINE_MODE=1` to use cached data when the network is unavailable.
+- **Community Strategy Hub**: share and rate strategies via `/community/strategies`.
 
 See CHANGELOG.md for release history and PROPOSAL_NEW_FEATURES.md for upcoming ideas.

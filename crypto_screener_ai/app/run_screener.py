@@ -8,8 +8,11 @@ New features:
   • Adds Task 8 asking for five best ideas in next 30 min
 """
 import json, os, uuid, datetime, argparse, requests, time
-
 from pathlib import Path
+
+CACHE_DIR = Path(__file__).resolve().parents[1] / 'data'
+CACHE_DIR.mkdir(exist_ok=True)
+TOP25_CACHE = CACHE_DIR / 'top25_cache.json'
 from dotenv import load_dotenv
 from rich import print
 from openai import OpenAI
@@ -23,7 +26,10 @@ def validate_schema(data: dict, schema_path: Path) -> None:
             raise ValueError(f"missing required key: {key}")
 
 def fetch_top_25_volume(vs_currency: str = "usd", retries: int = 3) -> list[str]:
-    """Fetch top 25 coins by volume with exponential backoff."""
+    """Fetch top 25 coins by volume with exponential backoff.
+    Falls back to cached data when OFFLINE_MODE is enabled or on failure."""
+    if os.getenv("OFFLINE_MODE") == "1" and TOP25_CACHE.exists():
+        return json.loads(TOP25_CACHE.read_text())
     url = (
         "https://api.coingecko.com/api/v3/coins/markets"
         f"?vs_currency={vs_currency}&order=volume_desc&per_page=25&page=1"
@@ -41,6 +47,8 @@ def fetch_top_25_volume(vs_currency: str = "usd", retries: int = 3) -> list[str]
             else:
                 time.sleep(delay)
                 delay *= 2
+    if TOP25_CACHE.exists():
+        return json.loads(TOP25_CACHE.read_text())
     return []
 
 # ---------- main --------------------------------------------------------------
@@ -95,15 +103,18 @@ def main():
         {"role": "assistant", "content": "Return JSON only."}
     ]
 
-    print("[bold cyan]🚀  Requesting analysis …[/]")
-    response = client.chat.completions.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        messages=messages,
-        temperature=0.3,
-        max_tokens=2800
-    )
-
-    reply = response.choices[0].message.content
+    if os.getenv("OFFLINE_MODE") == "1" and Path("last_response.json").exists():
+        print("[yellow]Offline mode enabled – using cached LLM response.[/]")
+        reply = Path("last_response.json").read_text()
+    else:
+        print("[bold cyan]🚀  Requesting analysis …[/]")
+        response = client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            messages=messages,
+            temperature=0.3,
+            max_tokens=2800
+        )
+        reply = response.choices[0].message.content
     schema_path = Path(__file__).with_name("schema.json")
     try:
         data = json.loads(reply)

@@ -13,3 +13,6 @@ Building upon the existing roadmap, the following additions could further streng
 6. **User Permissions** – role-based access control to limit who can modify portfolio holdings or run backtests.
 7. **Scheduling UI** – calendar interface to adjust screener frequency and backtest windows visually.
 8. **Social Sentiment Feeds** – surface trending Twitter or Reddit discussions for watched symbols.
+9. **Multi-Factor Authentication** – secure logins with TOTP or hardware keys.
+10. **Strategy Versioning** – track revisions of user-submitted strategies in the community hub.
+11. **Data Export Tools** – allow CSV/JSON exports of backtest and portfolio metrics for external analysis.
