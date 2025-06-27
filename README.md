@@ -154,3 +154,10 @@ results are stored:
 
 - `PUSHOVER_TOKEN` and `PUSHOVER_USER` for [Pushover](https://pushover.net) messages
 - `SMTP_SERVER`, `SMTP_USER`, `SMTP_PASS`, and `ALERT_EMAIL` for email alerts
+
+## New Features
+- **Real-Time WebSockets**: Subscribe to `/ws/results` for instant screener updates.
+- **Advanced Backtesting**: `/backtest/{symbol}` endpoint simulates strategies using historical prices.
+- **Portfolio Tracking**: Manage holdings via `/portfolio` and view PnL at `/portfolio/pnl`.
+- **iCloud Sync**: The macOS companion stores your watchlist in iCloud for seamless access.
+- **Auto-Update**: The companion app checks a remote JSON file and prompts when a newer version is available.
