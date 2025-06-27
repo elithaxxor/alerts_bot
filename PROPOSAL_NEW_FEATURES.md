@@ -8,3 +8,8 @@ To further complement these capabilities, consider the following ideas:
 3. **Strategy Backtest Sharing** – users can publish backtest results with a shareable link for peer review.
 
 These additions would expand usability across different regions and devices while fostering collaboration among traders.
+
+## Additional Suggestions
+4. **Automated Security Audits** – run static analysis on strategy code and dependencies before deployment.
+5. **Offline Mode** – allow limited analysis using cached data when network connectivity is interrupted.
+6. **Community Strategy Hub** – share and rate user-submitted strategies directly from the dashboard.
