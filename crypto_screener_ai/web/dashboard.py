@@ -8,9 +8,11 @@ from email.message import EmailMessage
 import requests
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.security.api_key import APIKeyHeader
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+import csv
 
 from ..app import run_screener
 
@@ -115,6 +117,22 @@ async def get_result(run_id: str, key: str = Depends(require_key)):
     return json.loads(row[0])
 
 
+@app.get('/results/export')
+async def export_results(format: str = 'json', key: str = Depends(require_key)):
+    """Export all stored results as JSON or CSV."""
+    conn = get_db()
+    cur = conn.execute('SELECT run_id, ts, data FROM results ORDER BY ts')
+    rows = cur.fetchall()
+    conn.close()
+    if format == 'csv':
+        def generate():
+            yield 'run_id,ts,data\n'
+            for r in rows:
+                yield f"{r[0]},{r[1]}," + json.dumps(json.loads(r[2])) + "\n"
+        return StreamingResponse(generate(), media_type='text/csv')
+    return [json.loads(r[2]) for r in rows]
+
+
 @app.get('/sentiment')
 async def sentiment():
     """Return the most recently fetched sentiment data."""
@@ -126,6 +144,18 @@ async def predict(symbol: str):
     """Dummy short-term price prediction."""
     change = random.uniform(-0.05, 0.05)
     return {'symbol': symbol.upper(), 'predicted_change': change}
+
+
+@app.get('/health')
+async def health():
+    """Return timestamp and run ID of the most recent screener run."""
+    conn = get_db()
+    cur = conn.execute('SELECT run_id, ts FROM results ORDER BY ts DESC LIMIT 1')
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return {'run_id': None, 'ts': None}
+    return {'run_id': row[0], 'ts': row[1]}
 
 
 def screener_job():
@@ -149,7 +179,9 @@ def fetch_sentiment():
     logger.info('Fetched sentiment: %s', SENTIMENT_DATA)
 
 
-scheduler = BackgroundScheduler()
+scheduler = BackgroundScheduler(
+    jobstores={'default': SQLAlchemyJobStore(url=f'sqlite:///{DB_PATH / "jobs.db"}')}
+)
 scheduler.add_job(screener_job, 'interval', hours=1)
 scheduler.add_job(fetch_sentiment, 'interval', minutes=10)
 scheduler.start()

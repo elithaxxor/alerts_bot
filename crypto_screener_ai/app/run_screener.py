@@ -7,24 +7,41 @@ New features:
   • Automatically appends top-25-by-volume (CoinGecko) to the watch-list
   • Adds Task 8 asking for five best ideas in next 30 min
 """
-import json, os, uuid, datetime, argparse, requests
+import json, os, uuid, datetime, argparse, requests, time
+
 from pathlib import Path
 from dotenv import load_dotenv
 from rich import print
 from openai import OpenAI
 
+
 # ---------- helpers -----------------------------------------------------------
-def fetch_top_25_volume(vs_currency: str = "usd") -> list[str]:
-    url = ("https://api.coingecko.com/api/v3/coins/markets"
-           f"?vs_currency={vs_currency}&order=volume_desc&per_page=25&page=1")
-    try:
-        res = requests.get(url, timeout=10)
-        res.raise_for_status()
-        return [coin["symbol"].upper() for coin in res.json()]
-    except Exception as exc:
-        print(f"[yellow]⚠️  Could not fetch top-25 volume list ({exc}); "
-              "continuing with defaults.[/]")
-        return []
+def validate_schema(data: dict, schema_path: Path) -> None:
+    schema = json.loads(schema_path.read_text())
+    for key in schema.get("required", []):
+        if key not in data:
+            raise ValueError(f"missing required key: {key}")
+
+def fetch_top_25_volume(vs_currency: str = "usd", retries: int = 3) -> list[str]:
+    """Fetch top 25 coins by volume with exponential backoff."""
+    url = (
+        "https://api.coingecko.com/api/v3/coins/markets"
+        f"?vs_currency={vs_currency}&order=volume_desc&per_page=25&page=1"
+    )
+    delay = 1
+    for attempt in range(retries):
+        try:
+            res = requests.get(url, timeout=10)
+            res.raise_for_status()
+            return [coin["symbol"].upper() for coin in res.json()]
+        except Exception as exc:
+            if attempt == retries - 1:
+                print(
+                    f"[yellow]⚠️  Could not fetch top-25 volume list ({exc}); continuing with defaults.[/]")
+            else:
+                time.sleep(delay)
+                delay *= 2
+    return []
 
 # ---------- main --------------------------------------------------------------
 def main():
@@ -87,7 +104,14 @@ def main():
     )
 
     reply = response.choices[0].message.content
-    Path("last_response.json").write_text(reply)
+    schema_path = Path(__file__).with_name("schema.json")
+    try:
+        data = json.loads(reply)
+        validate_schema(data, schema_path)
+    except (json.JSONDecodeError, ValueError) as exc:
+        print(f"[red]Invalid LLM payload: {exc}. Response discarded.[/]")
+        return
+    Path("last_response.json").write_text(json.dumps(data, indent=2))
     print("\n[green]LLM response saved to last_response.json[/]")
 
 if __name__ == "__main__":
