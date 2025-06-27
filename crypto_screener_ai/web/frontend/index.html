@@ -7,21 +7,90 @@
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
     body { font-family: sans-serif; margin: 1rem; }
-    #content { max-width: 900px; margin: auto; }
+    #widgets { max-width: 900px; margin: auto; display: flex; flex-wrap: wrap; gap: 1rem; }
+    .widget { border: 1px solid #ccc; padding: 0.5rem; width: 280px; }
   </style>
 </head>
 <body>
   <h1>CryptoScreenerAI Dashboard</h1>
-  <div id="content"></div>
+  <div id="widgets">
+    <div class="widget" draggable="true" data-widget="results">
+      <h2>Latest Results</h2>
+      <pre id="latest"></pre>
+    </div>
+    <div class="widget" draggable="true" data-widget="pnl">
+      <h2>Portfolio PnL</h2>
+      <pre id="pnl"></pre>
+    </div>
+    <div class="widget" draggable="true" data-widget="assistant">
+      <h2>Assistant</h2>
+      <input id="question" placeholder="Ask about pnl, risk or strategies" />
+      <button onclick="ask()">Send</button>
+      <pre id="answer"></pre>
+    </div>
+  </div>
   <script>
-    async function loadLatest() {
-      const resp = await fetch('/results/latest', {headers:{'X-API-Key': 'demo'}});
-      const data = await resp.json();
-      const pre = document.createElement('pre');
-      pre.textContent = JSON.stringify(data, null, 2);
-      document.getElementById('content').appendChild(pre);
+    const KEY = 'demo';
+    const layoutKey = 'dashboardOrder';
+
+    function saveLayout() {
+      const order = Array.from(document.querySelectorAll('.widget')).map(w => w.dataset.widget);
+      localStorage.setItem(layoutKey, JSON.stringify(order));
     }
+
+    function loadLayout() {
+      const order = JSON.parse(localStorage.getItem(layoutKey) || '[]');
+      const container = document.getElementById('widgets');
+      order.forEach(name => {
+        const el = document.querySelector(`[data-widget="${name}"]`);
+        if (el) container.appendChild(el);
+      });
+    }
+
+    function enableDrag() {
+      document.querySelectorAll('.widget').forEach(w => {
+        w.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', w.dataset.widget);
+        });
+        w.addEventListener('dragover', e => e.preventDefault());
+        w.addEventListener('drop', e => {
+          e.preventDefault();
+          const from = document.querySelector(`[data-widget="${e.dataTransfer.getData('text/plain')}"]`);
+          if (from && from !== w) {
+            w.after(from);
+            saveLayout();
+          }
+        });
+      });
+    }
+
+    async function loadLatest() {
+      const resp = await fetch('/results/latest', {headers:{'X-API-Key': KEY}});
+      const data = await resp.json();
+      document.getElementById('latest').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function loadPnl() {
+      const resp = await fetch('/portfolio/pnl', {headers:{'X-API-Key': KEY}});
+      const data = await resp.json();
+      document.getElementById('pnl').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function ask() {
+      const q = document.getElementById('question').value;
+      const resp = await fetch('/assistant', {
+        method: 'POST',
+        headers:{'Content-Type':'application/json','X-API-Key': KEY},
+        body: JSON.stringify({query:q})
+      });
+      const data = await resp.json();
+      document.getElementById('answer').textContent = data.response;
+    }
+
+    loadLayout();
+    enableDrag();
     loadLatest();
+    loadPnl();
   </script>
 </body>
 </html>

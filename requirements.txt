@@ -8,3 +8,5 @@ plotly
 rich
 scikit-learn
 sqlalchemy
+slack_sdk
+discord-webhook
