@@ -1,0 +1,26 @@
+# Feature Proposal
+
+This repository currently provides a CLI script (`run_screener.py`) that submits a prompt to OpenAI and stores the response. The following improvements could significantly expand its usability and reliability.
+
+## 1. Web-Based Dashboard
+- **Framework**: Use FastAPI for API endpoints and a lightweight front end (e.g., Svelte or React) to display screening results.
+- **Scheduling**: Run the screener at regular intervals via Celery or APScheduler and update a database (SQLite or PostgreSQL).
+- **Authentication**: Simple API key or OAuth support for multiple users.
+- **Visualization**: Integrate chart libraries (Plotly) for momentum, volatility and depth heat maps.
+
+## 2. macOS Desktop App
+- **Toolkit**: Leverage PyObjC or Electron to wrap the web interface as a standalone macOS application.
+- **Notifications**: macOS Notification Center alerts when new trade setups appear.
+- **Local Storage**: Cache recent API responses for offline viewing.
+
+## 3. Reliability Improvements
+- **Dependency Management**: Add a `requirements.txt` with pinned package versions.
+- **Error Handling**: Gracefully report missing API keys or network failures.
+- **Unit Tests**: Expand test coverage to include the CLI workflow and JSON schema validation.
+
+## 4. Additional Analytics
+- **On‑chain metrics**: Incorporate APIs such as Glassnode or Santiment for network statistics.
+- **Social sentiment**: Schedule scrapers for Twitter/X, Reddit, and Telegram using official APIs where possible.
+- **Backtesting module**: Allow users to evaluate historical strategy performance on selected pairs.
+
+These features would transform the script into a comprehensive, user‑friendly platform for advanced crypto screening.
