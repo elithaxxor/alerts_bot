@@ -142,3 +142,15 @@ Output strictly conforms to the schema.
 }
 
 
+
+## Autorun
+Run `./autorun.sh` to install dependencies from `requirements.txt` and launch
+the dashboard. The API starts on port **9999**, while static files are served on
+port **9998**.
+
+### Alerts
+Set these optional environment variables for push/email notifications when new
+results are stored:
+
+- `PUSHOVER_TOKEN` and `PUSHOVER_USER` for [Pushover](https://pushover.net) messages
+- `SMTP_SERVER`, `SMTP_USER`, `SMTP_PASS`, and `ALERT_EMAIL` for email alerts
