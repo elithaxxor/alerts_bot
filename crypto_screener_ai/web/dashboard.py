@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title='CryptoScreenerAI Dashboard')
 
 SENTIMENT_DATA = {'sentiment': 'neutral', 'score': 0.0}
+SOCIAL_POSTS: list[str] = []
 
 # websocket state
 connections: set[WebSocket] = set()
@@ -121,12 +122,29 @@ def get_db():
                         quantity REAL,
                         entry_price REAL
                     )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS users (
+                        api_key TEXT PRIMARY KEY,
+                        role TEXT
+                    )''')
     return conn
 
 
-def require_key(key: str = Depends(api_key_header)):
-    if key != API_KEY:
-        raise HTTPException(status_code=401, detail='Invalid API key')
+def require_key(key: str = Depends(api_key_header)) -> dict:
+    """Validate API key and return user info."""
+    conn = get_db()
+    cur = conn.execute('SELECT role FROM users WHERE api_key = ?', (key,))
+    row = cur.fetchone()
+    conn.close()
+    if row:
+        return {'api_key': key, 'role': row[0]}
+    if key == API_KEY:
+        return {'api_key': key, 'role': 'admin'}
+    raise HTTPException(status_code=401, detail='Invalid API key')
+
+def require_admin(user: dict = Depends(require_key)) -> dict:
+    if user.get('role') != 'admin':
+        raise HTTPException(status_code=403, detail='Admin role required')
+    return user
 
 
 @app.get('/', response_class=HTMLResponse)
@@ -205,6 +223,12 @@ async def sentiment():
     return SENTIMENT_DATA
 
 
+@app.get('/sentiment/posts')
+async def sentiment_posts():
+    """Return cached list of trending social posts."""
+    return {'posts': SOCIAL_POSTS}
+
+
 @app.get('/predict/{symbol}')
 async def predict(symbol: str):
     """Dummy short-term price prediction."""
@@ -222,7 +246,7 @@ async def get_portfolio(key: str = Depends(require_key)):
 
 
 @app.post('/portfolio')
-async def upsert_portfolio(item: dict, key: str = Depends(require_key)):
+async def upsert_portfolio(item: dict, user: dict = Depends(require_admin)):
     symbol = item.get('symbol', '').upper()
     qty = float(item.get('quantity', 0))
     entry = float(item.get('entry_price', 0))
@@ -237,7 +261,7 @@ async def upsert_portfolio(item: dict, key: str = Depends(require_key)):
 
 
 @app.delete('/portfolio/{symbol}')
-async def delete_portfolio(symbol: str, key: str = Depends(require_key)):
+async def delete_portfolio(symbol: str, user: dict = Depends(require_admin)):
     conn = get_db()
     conn.execute('DELETE FROM portfolio WHERE symbol = ?', (symbol.upper(),))
     conn.commit()
@@ -305,8 +329,38 @@ async def get_strategy(name: str):
     return {'name': name, 'code': path.read_text()}
 
 
+@app.get('/users')
+async def list_users(user: dict = Depends(require_admin)):
+    """List registered API keys and roles."""
+    conn = get_db()
+    rows = conn.execute('SELECT api_key, role FROM users').fetchall()
+    conn.close()
+    return [{'api_key': r[0], 'role': r[1]} for r in rows]
+
+
+@app.post('/users/{api_key}')
+async def upsert_user(api_key: str, data: dict, user: dict = Depends(require_admin)):
+    """Create or update a user with the given API key."""
+    role = data.get('role', 'user')
+    conn = get_db()
+    conn.execute('INSERT OR REPLACE INTO users(api_key, role) VALUES(?,?)', (api_key, role))
+    conn.commit()
+    conn.close()
+    return {'status': 'ok'}
+
+
+@app.delete('/users/{api_key}')
+async def delete_user(api_key: str, user: dict = Depends(require_admin)):
+    """Remove a user by API key."""
+    conn = get_db()
+    conn.execute('DELETE FROM users WHERE api_key = ?', (api_key,))
+    conn.commit()
+    conn.close()
+    return {'status': 'ok'}
+
+
 @app.get('/backtest/{symbol}')
-async def run_backtest_api(symbol: str, days: int = 90, key: str = Depends(require_key)):
+async def run_backtest_api(symbol: str, days: int = 90, user: dict = Depends(require_admin)):
     try:
         result = backtest.run_backtest(symbol, days)
     except Exception as exc:
@@ -345,6 +399,22 @@ async def health():
     return {'run_id': row[0], 'ts': row[1]}
 
 
+@app.get('/schedule/screener')
+async def get_screener_schedule(user: dict = Depends(require_admin)):
+    """Return next scheduled screener run."""
+    job = scheduler.get_job('screener')
+    ts = job.next_run_time.isoformat() if job and job.next_run_time else None
+    return {'next_run': ts}
+
+
+@app.post('/schedule/screener')
+async def set_screener_schedule(data: dict, user: dict = Depends(require_admin)):
+    """Adjust interval for the screener job in hours."""
+    hours = float(data.get('hours', 1))
+    scheduler.reschedule_job('screener', trigger='interval', hours=hours)
+    return {'status': 'ok'}
+
+
 def screener_job():
     logger.info('Running screener job')
     run_screener.main()
@@ -368,10 +438,25 @@ def fetch_sentiment():
     logger.info('Fetched sentiment: %s', SENTIMENT_DATA)
 
 
+def fetch_social_posts():
+    """Fetch trending Reddit posts as a simple sentiment feed."""
+    global SOCIAL_POSTS
+    url = 'https://www.reddit.com/r/CryptoCurrency/top.json?limit=5&t=day'
+    try:
+        res = requests.get(url, headers={'User-Agent': 'CryptoScreenerAI'}, timeout=10)
+        res.raise_for_status()
+        data = res.json()
+        SOCIAL_POSTS = [child['data']['title'] for child in data['data']['children']]
+        logger.info('Fetched %d social posts', len(SOCIAL_POSTS))
+    except Exception as exc:
+        logger.warning('Social posts update failed: %s', exc)
+
+
 scheduler = BackgroundScheduler(
     jobstores={'default': SQLAlchemyJobStore(url=f'sqlite:///{DB_PATH / "jobs.db"}')}
 )
-scheduler.add_job(screener_job, 'interval', hours=1)
-scheduler.add_job(fetch_sentiment, 'interval', minutes=10)
+scheduler.add_job(screener_job, 'interval', hours=1, id='screener')
+scheduler.add_job(fetch_sentiment, 'interval', minutes=10, id='sentiment')
+scheduler.add_job(fetch_social_posts, 'interval', minutes=15, id='social')
 scheduler.start()
 
