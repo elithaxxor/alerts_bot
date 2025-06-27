@@ -168,3 +168,6 @@ results are stored:
 - **Natural Language Assistant**: Query `/assistant` with a question about PnL, risk or strategies.
 - **Customisable Dashboards**: Drag widgets on the web UI to rearrange and store your layout.
 - **Cross-Platform Alerts**: Slack and Discord webhooks join email and Pushover notifications.
+- **User Permissions**: Create API keys with roles via `/users` and restrict modifications to admins.
+- **Scheduling API**: Adjust screener frequency through `/schedule/screener`.
+- **Social Sentiment Feeds**: `/sentiment/posts` returns trending Reddit headlines.
