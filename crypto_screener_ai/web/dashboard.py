@@ -6,7 +6,6 @@ import logging
 import smtplib
 from email.message import EmailMessage
 import requests
-
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.responses import HTMLResponse
@@ -142,8 +141,6 @@ def screener_job():
         conn.commit()
         conn.close()
         notify(f"New screener results stored: {js.get('run_id')}")
-
-
 
 def fetch_sentiment():
     """Update global sentiment data (placeholder implementation)."""

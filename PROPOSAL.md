@@ -31,7 +31,6 @@ These features would transform the script into a comprehensive, user‑friendly 
 - **Caching & Backtesting**: Store past responses in SQLite to enable quick backtests and offline access.
 
 
-
 ### Additional Roadmap Ideas
 - **Containerized Deployment**: Provide a Dockerfile for reproducible setups.
 - **OAuth Support**: Allow optional login via Google or GitHub for multi‑user access.
