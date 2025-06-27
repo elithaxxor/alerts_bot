@@ -315,6 +315,19 @@ async def portfolio_risk(key: str = Depends(require_key), days: int = 90):
     return metrics
 
 
+@app.get('/portfolio/risk/export')
+async def portfolio_risk_export(format: str = 'json', key: str = Depends(require_key), days: int = 90):
+    """Export portfolio risk metrics as JSON or CSV."""
+    metrics = await portfolio_risk(key, days)
+    if format == 'csv':
+        def generate():
+            yield 'sharpe_ratio,max_drawdown\n'
+            if metrics:
+                yield f"{metrics.get('sharpe_ratio',0)},{metrics.get('max_drawdown',0)}\n"
+        return StreamingResponse(generate(), media_type='text/csv')
+    return metrics
+
+
 @app.get('/strategies')
 async def list_strategies():
     """List available strategy files."""
@@ -423,6 +436,21 @@ async def run_backtest_api(symbol: str, days: int = 90, user: dict = Depends(req
         result = backtest.run_backtest(symbol, days)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+    return result
+
+
+@app.get('/backtest/{symbol}/export')
+async def backtest_export(symbol: str, days: int = 90, format: str = 'json', user: dict = Depends(require_admin)):
+    """Export backtest results as JSON or CSV."""
+    try:
+        result = backtest.run_backtest(symbol, days)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    if format == 'csv':
+        def generate():
+            yield 'symbol,period_days,trades,return_pct,generated_at\n'
+            yield f"{result.get('symbol')},{result.get('period_days')},{result.get('trades')},{result.get('return_pct')},{result.get('generated_at')}\n"
+        return StreamingResponse(generate(), media_type='text/csv')
     return result
 
 

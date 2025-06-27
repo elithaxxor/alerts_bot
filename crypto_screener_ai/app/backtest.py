@@ -1,18 +1,33 @@
 import datetime
+import json
+import os
 import requests
 from typing import List, Dict
+from pathlib import Path
 
 
 def fetch_historical_prices(symbol: str, days: int = 90) -> List[float]:
-    """Fetch daily closing prices from CoinGecko."""
+    """Fetch daily closing prices from CoinGecko or local cache."""
+    cache_path = Path(__file__).resolve().parents[2] / 'data' / f'hist_{symbol.lower()}.json'
+
+    if os.getenv('OFFLINE_MODE') and cache_path.exists():
+        return json.loads(cache_path.read_text())
+
     url = (
         f"https://api.coingecko.com/api/v3/coins/{symbol.lower()}/market_chart"
         f"?vs_currency=usd&days={days}&interval=daily"
     )
-    res = requests.get(url, timeout=10)
-    res.raise_for_status()
-    data = res.json().get("prices", [])
-    return [p[1] for p in data]
+    try:
+        res = requests.get(url, timeout=10)
+        res.raise_for_status()
+        data = res.json().get("prices", [])
+        prices = [p[1] for p in data]
+        cache_path.write_text(json.dumps(prices))
+        return prices
+    except Exception:
+        if cache_path.exists():
+            return json.loads(cache_path.read_text())
+        raise
 
 
 def simple_moving_average_cross(prices: List[float], short: int = 5, long: int = 20) -> Dict[str, float]:

@@ -7,49 +7,32 @@ New features:
   • Automatically appends top-25-by-volume (CoinGecko) to the watch-list
   • Adds Task 8 asking for five best ideas in next 30 min
 """
-import json, os, uuid, datetime, argparse, requests, time
+import json, os, uuid, datetime, argparse, requests
 from pathlib import Path
-
-CACHE_DIR = Path(__file__).resolve().parents[1] / 'data'
-CACHE_DIR.mkdir(exist_ok=True)
-TOP25_CACHE = CACHE_DIR / 'top25_cache.json'
 from dotenv import load_dotenv
 from rich import print
 from openai import OpenAI
 
-
 # ---------- helpers -----------------------------------------------------------
-def validate_schema(data: dict, schema_path: Path) -> None:
-    schema = json.loads(schema_path.read_text())
-    for key in schema.get("required", []):
-        if key not in data:
-            raise ValueError(f"missing required key: {key}")
+def fetch_top_25_volume(vs_currency: str = "usd") -> list[str]:
+    """Return list of top volume symbols, using cache when OFFLINE_MODE is set."""
+    cache_path = Path(__file__).resolve().parents[2] / 'data' / 'top25_cache.json'
+    if os.getenv('OFFLINE_MODE') and cache_path.exists():
+        return json.loads(cache_path.read_text())
 
-def fetch_top_25_volume(vs_currency: str = "usd", retries: int = 3) -> list[str]:
-    """Fetch top 25 coins by volume with exponential backoff.
-    Falls back to cached data when OFFLINE_MODE is enabled or on failure."""
-    if os.getenv("OFFLINE_MODE") == "1" and TOP25_CACHE.exists():
-        return json.loads(TOP25_CACHE.read_text())
-    url = (
-        "https://api.coingecko.com/api/v3/coins/markets"
-        f"?vs_currency={vs_currency}&order=volume_desc&per_page=25&page=1"
-    )
-    delay = 1
-    for attempt in range(retries):
-        try:
-            res = requests.get(url, timeout=10)
-            res.raise_for_status()
-            return [coin["symbol"].upper() for coin in res.json()]
-        except Exception as exc:
-            if attempt == retries - 1:
-                print(
-                    f"[yellow]⚠️  Could not fetch top-25 volume list ({exc}); continuing with defaults.[/]")
-            else:
-                time.sleep(delay)
-                delay *= 2
-    if TOP25_CACHE.exists():
-        return json.loads(TOP25_CACHE.read_text())
-    return []
+    url = ("https://api.coingecko.com/api/v3/coins/markets"
+           f"?vs_currency={vs_currency}&order=volume_desc&per_page=25&page=1")
+    try:
+        res = requests.get(url, timeout=10)
+        res.raise_for_status()
+        symbols = [coin["symbol"].upper() for coin in res.json()]
+        cache_path.write_text(json.dumps(symbols))
+        return symbols
+    except Exception as exc:
+        print(f"[yellow]⚠️  Could not fetch top-25 volume list ({exc}); continuing with defaults.[/]")
+        if cache_path.exists():
+            return json.loads(cache_path.read_text())
+        return []
 
 # ---------- main --------------------------------------------------------------
 def main():
@@ -103,26 +86,16 @@ def main():
         {"role": "assistant", "content": "Return JSON only."}
     ]
 
-    if os.getenv("OFFLINE_MODE") == "1" and Path("last_response.json").exists():
-        print("[yellow]Offline mode enabled – using cached LLM response.[/]")
-        reply = Path("last_response.json").read_text()
-    else:
-        print("[bold cyan]🚀  Requesting analysis …[/]")
-        response = client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-            messages=messages,
-            temperature=0.3,
-            max_tokens=2800
-        )
-        reply = response.choices[0].message.content
-    schema_path = Path(__file__).with_name("schema.json")
-    try:
-        data = json.loads(reply)
-        validate_schema(data, schema_path)
-    except (json.JSONDecodeError, ValueError) as exc:
-        print(f"[red]Invalid LLM payload: {exc}. Response discarded.[/]")
-        return
-    Path("last_response.json").write_text(json.dumps(data, indent=2))
+    print("[bold cyan]🚀  Requesting analysis …[/]")
+    response = client.chat.completions.create(
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        messages=messages,
+        temperature=0.3,
+        max_tokens=2800
+    )
+
+    reply = response.choices[0].message.content
+    Path("last_response.json").write_text(reply)
     print("\n[green]LLM response saved to last_response.json[/]")
 
 if __name__ == "__main__":

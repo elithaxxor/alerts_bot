@@ -65,8 +65,11 @@ def load_module_with_mocks():
 def test_fetch_top_25_volume_success():
     mod = load_module_with_mocks()
     mod.requests._next_response = mod.requests.Response([{'symbol': 'eth'}, {'symbol': 'btc'}])
+    cache_path = Path('data/top25_cache.json')
+    original = cache_path.read_text()
     result = mod.fetch_top_25_volume()
     assert result == ['ETH', 'BTC']
+    cache_path.write_text(original)
 
 
 def test_fetch_top_25_volume_failure(capsys):
@@ -74,5 +77,12 @@ def test_fetch_top_25_volume_failure(capsys):
     mod.requests._next_response = mod.requests.Response([], raise_exc=True)
     result = mod.fetch_top_25_volume()
     captured = capsys.readouterr()
-    assert result == []
+    assert result == ["BTC", "ETH", "BNB", "XRP", "SOL"]
     assert 'Could not fetch top-25 volume list' in captured.out
+
+
+def test_fetch_top_25_volume_offline(monkeypatch):
+    mod = load_module_with_mocks()
+    monkeypatch.setenv('OFFLINE_MODE', '1')
+    result = mod.fetch_top_25_volume()
+    assert result == ["BTC", "ETH", "BNB", "XRP", "SOL"]

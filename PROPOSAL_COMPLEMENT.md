@@ -16,3 +16,5 @@ Building upon the existing roadmap, the following additions could further streng
 9. **Multi-Factor Authentication** – secure logins with TOTP or hardware keys.
 10. **Strategy Versioning** – track revisions of user-submitted strategies in the community hub.
 11. **Data Export Tools** – allow CSV/JSON exports of backtest and portfolio metrics for external analysis.
+12. **Advanced Analytics Dashboard** – visualise results with interactive charts and custom reports.
+13. **Cloud Sync for Strategies** – store user strategies in a cloud drive for access across devices.
