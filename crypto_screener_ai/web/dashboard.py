@@ -4,17 +4,18 @@ import random
 import sqlite3
 import logging
 import smtplib
+import asyncio
 from email.message import EmailMessage
 import requests
 from pathlib import Path
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.security.api_key import APIKeyHeader
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 import csv
 
-from ..app import run_screener
+from ..app import run_screener, backtest
 
 DB_PATH = Path(__file__).resolve().parents[1] / 'data'
 DB_PATH.mkdir(exist_ok=True)
@@ -29,6 +30,16 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title='CryptoScreenerAI Dashboard')
 
 SENTIMENT_DATA = {'sentiment': 'neutral', 'score': 0.0}
+
+# websocket state
+connections: set[WebSocket] = set()
+event_loop = None
+
+
+@app.on_event("startup")
+async def capture_loop():
+    global event_loop
+    event_loop = asyncio.get_running_loop()
 
 
 def send_push(message: str):
@@ -80,6 +91,11 @@ def get_db():
                         run_id TEXT PRIMARY KEY,
                         ts TEXT,
                         data TEXT
+                    )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS portfolio (
+                        symbol TEXT PRIMARY KEY,
+                        quantity REAL,
+                        entry_price REAL
                     )''')
     return conn
 
@@ -133,6 +149,32 @@ async def export_results(format: str = 'json', key: str = Depends(require_key)):
     return [json.loads(r[2]) for r in rows]
 
 
+@app.websocket('/ws/results')
+async def ws_results(websocket: WebSocket):
+    await websocket.accept()
+    connections.add(websocket)
+    conn = get_db()
+    cur = conn.execute('SELECT data FROM results ORDER BY ts DESC LIMIT 1')
+    row = cur.fetchone()
+    conn.close()
+    if row:
+        await websocket.send_text(row[0])
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        connections.discard(websocket)
+
+
+async def broadcast_update(data: str):
+    """Send JSON string to all connected WebSocket clients."""
+    for ws in list(connections):
+        try:
+            await ws.send_text(data)
+        except Exception:
+            connections.discard(ws)
+
+
 @app.get('/sentiment')
 async def sentiment():
     """Return the most recently fetched sentiment data."""
@@ -144,6 +186,70 @@ async def predict(symbol: str):
     """Dummy short-term price prediction."""
     change = random.uniform(-0.05, 0.05)
     return {'symbol': symbol.upper(), 'predicted_change': change}
+
+
+@app.get('/portfolio')
+async def get_portfolio(key: str = Depends(require_key)):
+    conn = get_db()
+    cur = conn.execute('SELECT symbol, quantity, entry_price FROM portfolio')
+    rows = cur.fetchall()
+    conn.close()
+    return [{'symbol': r[0], 'quantity': r[1], 'entry_price': r[2]} for r in rows]
+
+
+@app.post('/portfolio')
+async def upsert_portfolio(item: dict, key: str = Depends(require_key)):
+    symbol = item.get('symbol', '').upper()
+    qty = float(item.get('quantity', 0))
+    entry = float(item.get('entry_price', 0))
+    if not symbol:
+        raise HTTPException(status_code=400, detail='symbol required')
+    conn = get_db()
+    conn.execute('INSERT OR REPLACE INTO portfolio(symbol, quantity, entry_price)'
+                 ' VALUES(?,?,?)', (symbol, qty, entry))
+    conn.commit()
+    conn.close()
+    return {'status': 'ok'}
+
+
+@app.delete('/portfolio/{symbol}')
+async def delete_portfolio(symbol: str, key: str = Depends(require_key)):
+    conn = get_db()
+    conn.execute('DELETE FROM portfolio WHERE symbol = ?', (symbol.upper(),))
+    conn.commit()
+    conn.close()
+    return {'status': 'ok'}
+
+
+@app.get('/portfolio/pnl')
+async def portfolio_pnl(key: str = Depends(require_key)):
+    conn = get_db()
+    cur = conn.execute('SELECT symbol, quantity, entry_price FROM portfolio')
+    rows = cur.fetchall()
+    conn.close()
+    holdings = [{'symbol': r[0], 'quantity': r[1], 'entry_price': r[2]} for r in rows]
+    symbols = ','.join({h['symbol'].lower() for h in holdings})
+    if not symbols:
+        return []
+    url = f'https://api.coingecko.com/api/v3/simple/price?ids={symbols}&vs_currencies=usd'
+    res = requests.get(url, timeout=10)
+    res.raise_for_status()
+    prices = res.json()
+    results = []
+    for h in holdings:
+        current = prices.get(h['symbol'].lower(), {}).get('usd', 0)
+        pnl = (current - h['entry_price']) * h['quantity']
+        results.append({**h, 'current_price': current, 'pnl': pnl})
+    return results
+
+
+@app.get('/backtest/{symbol}')
+async def run_backtest_api(symbol: str, days: int = 90, key: str = Depends(require_key)):
+    try:
+        result = backtest.run_backtest(symbol, days)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return result
 
 
 @app.get('/health')
@@ -171,6 +277,8 @@ def screener_job():
         conn.commit()
         conn.close()
         notify(f"New screener results stored: {js.get('run_id')}")
+        if event_loop:
+            asyncio.run_coroutine_threadsafe(broadcast_update(data), event_loop)
 
 def fetch_sentiment():
     """Update global sentiment data (placeholder implementation)."""
