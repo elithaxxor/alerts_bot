@@ -142,3 +142,6 @@ Output strictly conforms to the schema.
 }
 
 
+
+## Autorun
+Run `./autorun.sh` to install dependencies and launch the dashboard.
