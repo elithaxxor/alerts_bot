@@ -80,9 +80,33 @@ def send_email(subject: str, body: str):
         logger.warning('Email alert failed: %s', exc)
 
 
+def send_slack(message: str):
+    """Send a Slack message via webhook if configured."""
+    url = os.getenv('SLACK_WEBHOOK_URL')
+    if not url:
+        return
+    try:
+        requests.post(url, json={'text': message}, timeout=10)
+    except Exception as exc:
+        logger.warning('Slack alert failed: %s', exc)
+
+
+def send_discord(message: str):
+    """Send a Discord message via webhook if configured."""
+    url = os.getenv('DISCORD_WEBHOOK_URL')
+    if not url:
+        return
+    try:
+        requests.post(url, json={'content': message}, timeout=10)
+    except Exception as exc:
+        logger.warning('Discord alert failed: %s', exc)
+
+
 def notify(message: str):
     send_push(message)
     send_email('CryptoScreenerAI Alert', message)
+    send_slack(message)
+    send_discord(message)
 
 
 def get_db():
@@ -288,6 +312,25 @@ async def run_backtest_api(symbol: str, days: int = 90, key: str = Depends(requi
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
     return result
+
+
+@app.post('/assistant')
+async def assistant(query: dict, key: str = Depends(require_key)):
+    """Very small natural-language helper for portfolio queries."""
+    text = query.get('query', '').lower()
+    if 'pnl' in text or 'p&l' in text:
+        pnl = await portfolio_pnl(key)
+        total = sum(item['pnl'] for item in pnl)
+        return {'response': f'Total PnL is {total:.2f} USD'}
+    if 'risk' in text:
+        risk = await portfolio_risk(key)
+        if not risk:
+            return {'response': 'No holdings recorded.'}
+        return {'response': f"Sharpe {risk.get('sharpe_ratio',0)}, Max DD {risk.get('max_drawdown',0)}"}
+    if 'strategy' in text:
+        strategies = (await list_strategies())['strategies']
+        return {'response': 'Available strategies: ' + ', '.join(strategies)}
+    return {'response': "I'm sorry, I can only answer questions about PnL, risk or strategies."}
 
 
 @app.get('/health')

@@ -154,6 +154,8 @@ results are stored:
 
 - `PUSHOVER_TOKEN` and `PUSHOVER_USER` for [Pushover](https://pushover.net) messages
 - `SMTP_SERVER`, `SMTP_USER`, `SMTP_PASS`, and `ALERT_EMAIL` for email alerts
+- `SLACK_WEBHOOK_URL` to post alerts to a Slack channel
+- `DISCORD_WEBHOOK_URL` to send alerts to Discord
 
 ## New Features
 - **Real-Time WebSockets**: Subscribe to `/ws/results` for instant screener updates.
@@ -163,3 +165,6 @@ results are stored:
 - **iCloud Sync**: The macOS companion stores your watchlist in iCloud for seamless access.
 - **Auto-Update**: The companion app checks a remote JSON file and prompts when a newer version is available.
 - **Strategy Marketplace**: Browse sample strategies via `/strategies` and view details at `/strategies/{name}`.
+- **Natural Language Assistant**: Query `/assistant` with a question about PnL, risk or strategies.
+- **Customisable Dashboards**: Drag widgets on the web UI to rearrange and store your layout.
+- **Cross-Platform Alerts**: Slack and Discord webhooks join email and Pushover notifications.
