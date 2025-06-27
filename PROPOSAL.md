@@ -24,3 +24,8 @@ This repository currently provides a CLI script (`run_screener.py`) that submits
 - **Backtesting module**: Allow users to evaluate historical strategy performance on selected pairs.
 
 These features would transform the script into a comprehensive, user‑friendly platform for advanced crypto screening.
+
+## 5. Complementary Features
+- **Automated Deployment**: Provide a simple `autorun.sh` script that installs dependencies and launches the dashboard on ports 9999 and 9998.
+- **Alerts**: Optional integration with Telegram or Discord webhooks to broadcast new screener results.
+- **Caching & Backtesting**: Store past responses in SQLite to enable quick backtests and offline access.
