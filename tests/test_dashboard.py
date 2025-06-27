@@ -1,7 +1,7 @@
 import sys
-import sys
 import types
 import importlib
+import json
 from pathlib import Path
 import pytest
 
@@ -136,3 +136,26 @@ def test_require_admin_denied(tmp_path):
     conn.close()
     with pytest.raises(DummyHTTPException):
         mod.require_admin({'api_key': 'userkey', 'role': 'user'})
+
+
+def test_compute_analytics(tmp_path):
+    mod = load_dashboard(tmp_path)
+    conn = mod.get_db()
+    sample = {
+        'screener': {
+            'BTC': {
+                '1h': {'momentum_score': 0.5},
+                '4h': {'momentum_score': 0.3}
+            },
+            'ETH': {
+                '1h': {'momentum_score': -0.2}
+            }
+        }
+    }
+    conn.execute('INSERT INTO results(run_id, ts, data) VALUES (?,?,?)',
+                 ('id1', 't', json.dumps(sample)))
+    conn.commit()
+    conn.close()
+    summary = mod.compute_analytics()
+    assert round(summary['BTC'], 2) == 0.4
+    assert round(summary['ETH'], 2) == -0.2
