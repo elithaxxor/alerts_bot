@@ -15,7 +15,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 import csv
 
-from ..app import run_screener, backtest
+from ..app import run_screener, backtest, security_audit
 
 DB_PATH = Path(__file__).resolve().parents[1] / 'data'
 DB_PATH.mkdir(exist_ok=True)
@@ -125,6 +125,12 @@ def get_db():
     conn.execute('''CREATE TABLE IF NOT EXISTS users (
                         api_key TEXT PRIMARY KEY,
                         role TEXT
+                    )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS community_strategies (
+                        name TEXT PRIMARY KEY,
+                        code TEXT,
+                        rating REAL DEFAULT 0,
+                        votes INTEGER DEFAULT 0
                     )''')
     return conn
 
@@ -329,6 +335,58 @@ async def get_strategy(name: str):
     return {'name': name, 'code': path.read_text()}
 
 
+@app.get('/community/strategies')
+async def community_list():
+    conn = get_db()
+    rows = conn.execute('SELECT name, rating, votes FROM community_strategies').fetchall()
+    conn.close()
+    return [{'name': r[0], 'rating': r[1], 'votes': r[2]} for r in rows]
+
+
+@app.get('/community/strategies/{name}')
+async def community_get(name: str):
+    conn = get_db()
+    cur = conn.execute('SELECT name, code, rating, votes FROM community_strategies WHERE name = ?', (name,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail='Not found')
+    return {'name': row[0], 'code': row[1], 'rating': row[2], 'votes': row[3]}
+
+
+@app.post('/community/strategies')
+async def community_add(item: dict, user: dict = Depends(require_key)):
+    name = item.get('name')
+    code = item.get('code')
+    if not name or not code:
+        raise HTTPException(status_code=400, detail='name and code required')
+    conn = get_db()
+    conn.execute('INSERT OR REPLACE INTO community_strategies(name, code) VALUES (?,?)', (name, code))
+    conn.commit()
+    conn.close()
+    return {'status': 'ok'}
+
+
+@app.post('/community/strategies/{name}/rate')
+async def community_rate(name: str, data: dict, user: dict = Depends(require_key)):
+    rating = float(data.get('rating', 0))
+    if rating < 1 or rating > 5:
+        raise HTTPException(status_code=400, detail='rating 1-5')
+    conn = get_db()
+    cur = conn.execute('SELECT rating, votes FROM community_strategies WHERE name=?', (name,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail='Not found')
+    current_rating, votes = row
+    new_votes = votes + 1
+    new_rating = ((current_rating * votes) + rating) / new_votes
+    conn.execute('UPDATE community_strategies SET rating=?, votes=? WHERE name=?', (new_rating, new_votes, name))
+    conn.commit()
+    conn.close()
+    return {'status': 'ok', 'rating': round(new_rating, 2), 'votes': new_votes}
+
+
 @app.get('/users')
 async def list_users(user: dict = Depends(require_admin)):
     """List registered API keys and roles."""
@@ -397,6 +455,16 @@ async def health():
     if not row:
         return {'run_id': None, 'ts': None}
     return {'run_id': row[0], 'ts': row[1]}
+
+
+@app.get('/audit')
+async def audit(user: dict = Depends(require_admin)):
+    """Run basic security audit of strategies and dependencies."""
+    report = {
+        'strategies': security_audit.audit_strategies(),
+        'dependencies': security_audit.audit_dependencies(),
+    }
+    return report
 
 
 @app.get('/schedule/screener')
