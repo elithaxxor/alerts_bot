@@ -142,7 +142,6 @@ def screener_job():
         conn.close()
         notify(f"New screener results stored: {js.get('run_id')}")
 
-
 def fetch_sentiment():
     """Update global sentiment data (placeholder implementation)."""
     SENTIMENT_DATA['sentiment'] = random.choice(['bullish', 'bearish', 'neutral'])
