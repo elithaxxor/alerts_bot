@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Implemented security audit CLI and `/audit` endpoint.
 - Added offline mode using cached data when `OFFLINE_MODE` is set.
 - Created community strategy hub with share and rating endpoints.
+- Added CSV/JSON export endpoints for backtests and portfolio risk metrics.
 
 ## [0.1.0] - 2024-03-01
 - Initial release with CLI screener and dashboard.

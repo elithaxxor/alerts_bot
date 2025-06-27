@@ -175,5 +175,6 @@ results are stored:
 - **Automated Security Audits**: `/audit` checks strategies and dependencies for issues.
 - **Offline Mode**: set `OFFLINE_MODE=1` to use cached data when the network is unavailable.
 - **Community Strategy Hub**: share and rate strategies via `/community/strategies`.
+- **Data Export Tools**: `/backtest/{symbol}/export` and `/portfolio/risk/export` provide CSV or JSON downloads.
 
 See CHANGELOG.md for release history and PROPOSAL_NEW_FEATURES.md for upcoming ideas.
