@@ -144,4 +144,6 @@ Output strictly conforms to the schema.
 
 
 ## Autorun
-Run `./autorun.sh` to install dependencies and launch the dashboard.
+Run `./autorun.sh` to install dependencies from `requirements.txt` and launch
+the dashboard. The API starts on port **9999**, while static files are served on
+port **9998**.
