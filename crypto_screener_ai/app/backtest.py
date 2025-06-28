@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+from .monitoring import record_api_call
 from typing import List, Dict, Callable
 from pathlib import Path
 import importlib.util
@@ -20,7 +21,7 @@ def fetch_historical_prices(symbol: str, days: int = 90) -> List[float]:
         f"?vs_currency=usd&days={days}&interval=daily"
     )
     try:
-        res = requests.get(url, timeout=10)
+        res = record_api_call("coingecko", requests.get, url, timeout=10)
         res.raise_for_status()
         data = res.json().get("prices", [])
         prices = [p[1] for p in data]

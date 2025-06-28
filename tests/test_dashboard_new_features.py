@@ -54,6 +54,8 @@ def load_dashboard(tmp_path):
             def deco(fn):
                 return fn
             return deco
+        def middleware(self,*a,**k):
+            return self.on_event()
         def get(self,*a,**k):
             return self.on_event()
         def post(self,*a,**k):
@@ -70,6 +72,7 @@ def load_dashboard(tmp_path):
     responses_mod = types.ModuleType('fastapi.responses')
     responses_mod.HTMLResponse = object
     responses_mod.StreamingResponse = object
+    responses_mod.JSONResponse = object
     sys.modules['fastapi.responses'] = responses_mod
     security_mod = types.ModuleType('fastapi.security.api_key')
     security_mod.APIKeyHeader = lambda name: None

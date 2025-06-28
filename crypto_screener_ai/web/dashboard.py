@@ -9,7 +9,7 @@ from email.message import EmailMessage
 import requests
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.security.api_key import APIKeyHeader
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
@@ -17,6 +17,7 @@ import ccxt
 import plotly.graph_objects as go
 
 from ..app import run_screener, backtest, security_audit
+from ..app.monitoring import record_api_call, API_METRICS
 
 DB_PATH = Path(__file__).resolve().parents[1] / 'data'
 DB_PATH.mkdir(exist_ok=True)
@@ -29,6 +30,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title='CryptoScreenerAI Dashboard')
+
+# expose metrics via middleware
+@app.middleware('http')
+async def metrics_endpoint(request, call_next):
+    if request.url.path == '/metrics':
+        return JSONResponse(API_METRICS)
+    return await call_next(request)
 
 SENTIMENT_DATA = {'sentiment': 'neutral', 'score': 0.0}
 SOCIAL_POSTS: list[str] = []
@@ -330,7 +338,7 @@ async def portfolio_pnl(key: str = Depends(require_key)):
     if not symbols:
         return []
     url = f'https://api.coingecko.com/api/v3/simple/price?ids={symbols}&vs_currencies=usd'
-    res = requests.get(url, timeout=10)
+    res = record_api_call('coingecko', requests.get, url, timeout=10)
     res.raise_for_status()
     prices = res.json()
     results = []
@@ -382,7 +390,7 @@ def compute_rebalance(strategy: str = 'equal') -> list[dict]:
         return []
     symbols = ','.join({h['symbol'].lower() for h in holdings})
     url = f'https://api.coingecko.com/api/v3/simple/price?ids={symbols}&vs_currencies=usd'
-    prices = requests.get(url, timeout=10).json()
+    prices = record_api_call('coingecko', requests.get, url, timeout=10).json()
     values = {h['symbol']: h['quantity'] * prices.get(h['symbol'].lower(), {}).get('usd', 0) for h in holdings}
     total = sum(values.values())
     if total == 0:
@@ -703,7 +711,7 @@ def fetch_social_posts():
     global SOCIAL_POSTS
     url = 'https://www.reddit.com/r/CryptoCurrency/top.json?limit=5&t=day'
     try:
-        res = requests.get(url, headers={'User-Agent': 'CryptoScreenerAI'}, timeout=10)
+        res = record_api_call('reddit', requests.get, url, headers={'User-Agent': 'CryptoScreenerAI'}, timeout=10)
         res.raise_for_status()
         data = res.json()
         SOCIAL_POSTS = [child['data']['title'] for child in data['data']['children']]

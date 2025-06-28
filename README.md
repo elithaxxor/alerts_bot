@@ -158,6 +158,9 @@ results are stored:
 - `SLACK_WEBHOOK_URL` to post alerts to a Slack channel
 - `DISCORD_WEBHOOK_URL` to send alerts to Discord
 
+The dashboard tracks usage of external APIs. Visit `/metrics` to view request
+counts, failures and total duration per provider.
+
 ## New Features
 - **Real-Time WebSockets**: Subscribe to `/ws/results` for instant screener updates.
 - **Advanced Backtesting**: `/backtest/{symbol}` endpoint simulates strategies using historical prices.
@@ -178,5 +181,6 @@ results are stored:
 - **Data Export Tools**: `/backtest/{symbol}/export` and `/portfolio/risk/export` provide CSV or JSON downloads.
 - **Pluggable Strategies**: drop custom modules into `strategies/` and select via the backtest API.
 - **Backtest Reports**: `run_backtest` now returns Plotly HTML charts for quick visual analysis.
+- **API Monitoring**: `/metrics` displays call counts and latency for upstream services.
 
 See CHANGELOG.md for release history and PROPOSAL_NEW_FEATURES.md for upcoming ideas.
