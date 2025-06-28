@@ -11,8 +11,8 @@ All notable changes to this project will be documented in this file.
 - Added CSV/JSON export endpoints for backtests and portfolio risk metrics.
 - Added pluggable strategy loader and HTML report generation for backtests.
 - Improved top volume fetcher with caching fallback for offline mode.
-- Refactored DataFetcher caching to unify implementation and ensure data
-  directory creation.
+- Refactored DataFetcher caching to unify implementation, removed duplicate
+  imports, and ensured data directory creation.
 - Added API monitoring with `/metrics` endpoint and helper to track upstream usage.
   Metrics now include failure counts and total duration per service.
 
