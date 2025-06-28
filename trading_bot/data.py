@@ -6,6 +6,7 @@ import pandas as pd
 import json
 import os
 from pathlib import Path
+from crypto_screener_ai.app.monitoring import record_api_call
 
 
 class DataFetcher:
@@ -39,7 +40,7 @@ class DataFetcher:
             return json.loads(cache_path.read_text())
 
         try:
-            ticker = self.exchange.fetch_ticker(self.symbol)
+            ticker = record_api_call("binance", self.exchange.fetch_ticker, self.symbol)
             price = ticker["last"]
             cache_path.write_text(json.dumps(price))
             return price
@@ -65,8 +66,12 @@ class DataFetcher:
             return df
 
         try:
-            data = self.exchange.fetch_ohlcv(
-                self.symbol, timeframe=timeframe, limit=limit
+            data = record_api_call(
+                "binance",
+                self.exchange.fetch_ohlcv,
+                self.symbol,
+                timeframe=timeframe,
+                limit=limit,
             )
             df = pd.DataFrame(
                 data, columns=["timestamp", "open", "high", "low", "close", "volume"]

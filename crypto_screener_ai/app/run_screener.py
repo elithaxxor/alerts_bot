@@ -8,6 +8,7 @@ New features:
   • Adds Task 8 asking for five best ideas in next 30 min
 """
 import json, os, uuid, datetime, argparse, requests
+from .monitoring import record_api_call
 from pathlib import Path
 from dotenv import load_dotenv
 from rich import print
@@ -25,7 +26,7 @@ def fetch_top_25_volume(vs_currency: str = "usd") -> list[str]:
         f"?vs_currency={vs_currency}&order=volume_desc&per_page=25&page=1"
     )
     try:
-        res = requests.get(url, timeout=10)
+        res = record_api_call("coingecko", requests.get, url, timeout=10)
         res.raise_for_status()
         symbols = [coin["symbol"].upper() for coin in res.json()]
         cache_path.write_text(json.dumps(symbols))
