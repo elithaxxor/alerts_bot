@@ -159,7 +159,8 @@ results are stored:
 - `DISCORD_WEBHOOK_URL` to send alerts to Discord
 
 The dashboard tracks usage of external APIs. Visit `/metrics` to view request
-counts, failures and total duration per provider.
+counts, failures and total duration per provider. Metrics accumulate while the
+application runs so you can monitor reliability trends.
 
 ## New Features
 - **Real-Time WebSockets**: Subscribe to `/ws/results` for instant screener updates.

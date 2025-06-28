@@ -38,6 +38,9 @@ def test_data_fetcher_offline(monkeypatch):
     price = fetcher.get_current_price()
     data = fetcher.get_ohlcv(limit=3)
 
+    assert fetcher._price_cache() == price_cache
+    assert fetcher._ohlcv_cache('1h') == ohlcv_cache
+
     assert price == 123.45
     assert len(data) == 3
 
