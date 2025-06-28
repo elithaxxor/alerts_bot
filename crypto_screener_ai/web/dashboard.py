@@ -13,6 +13,8 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.security.api_key import APIKeyHeader
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+import ccxt
+import plotly.graph_objects as go
 
 from ..app import run_screener, backtest, security_audit
 
@@ -102,11 +104,36 @@ def send_discord(message: str):
         logger.warning('Discord alert failed: %s', exc)
 
 
+def load_webhook_urls() -> list[str]:
+    """Return list of custom webhook URLs from config file."""
+    path = DB_PATH / 'webhooks.json'
+    if not path.exists():
+        return []
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return []
+
+
+def save_webhook_urls(urls: list[str]):
+    (DB_PATH / 'webhooks.json').write_text(json.dumps(urls))
+
+
+def send_custom_webhooks(payload: str):
+    """POST JSON payload to all registered webhook URLs."""
+    for url in load_webhook_urls():
+        try:
+            requests.post(url, data=payload, headers={'Content-Type': 'application/json'}, timeout=10)
+        except Exception as exc:
+            logger.warning('Custom webhook %s failed: %s', url, exc)
+
+
 def notify(message: str):
     send_push(message)
     send_email('CryptoScreenerAI Alert', message)
     send_slack(message)
     send_discord(message)
+    send_custom_webhooks(json.dumps({'message': message}))
 
 
 def get_db():
@@ -130,6 +157,11 @@ def get_db():
                         code TEXT,
                         rating REAL DEFAULT 0,
                         votes INTEGER DEFAULT 0
+                    )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS strategy_history (
+                        name TEXT,
+                        ts TEXT,
+                        return_pct REAL
                     )''')
     return conn
 
@@ -241,6 +273,19 @@ async def predict(symbol: str):
     return {'symbol': symbol.upper(), 'predicted_change': change}
 
 
+@app.get('/orderbook/{symbol}')
+async def get_orderbook(symbol: str, limit: int = 20):
+    """Return live order book and cache snapshot."""
+    try:
+        ex = ccxt.binance()
+        data = ex.fetch_order_book(symbol, limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    cache_file = DB_PATH / f'orderbook_{symbol.replace("/", "")}.json'
+    cache_file.write_text(json.dumps(data))
+    return data
+
+
 @app.get('/portfolio')
 async def get_portfolio(key: str = Depends(require_key)):
     conn = get_db()
@@ -325,6 +370,41 @@ async def portfolio_risk_export(format: str = 'json', key: str = Depends(require
                 yield f"{metrics.get('sharpe_ratio',0)},{metrics.get('max_drawdown',0)}\n"
         return StreamingResponse(generate(), media_type='text/csv')
     return metrics
+
+
+def compute_rebalance(strategy: str = 'equal') -> list[dict]:
+    """Return trade suggestions to rebalance portfolio."""
+    conn = get_db()
+    rows = conn.execute('SELECT symbol, quantity FROM portfolio').fetchall()
+    conn.close()
+    holdings = [{'symbol': r[0], 'quantity': r[1]} for r in rows]
+    if not holdings:
+        return []
+    symbols = ','.join({h['symbol'].lower() for h in holdings})
+    url = f'https://api.coingecko.com/api/v3/simple/price?ids={symbols}&vs_currencies=usd'
+    prices = requests.get(url, timeout=10).json()
+    values = {h['symbol']: h['quantity'] * prices.get(h['symbol'].lower(), {}).get('usd', 0) for h in holdings}
+    total = sum(values.values())
+    if total == 0:
+        return []
+    if strategy != 'equal':
+        raise HTTPException(status_code=400, detail='unsupported strategy')
+    target = total / len(holdings)
+    suggestions = []
+    for h in holdings:
+        current_val = values[h['symbol']]
+        diff = target - current_val
+        if abs(diff) < 1e-8:
+            continue
+        price = prices.get(h['symbol'].lower(), {}).get('usd', 0) or 1
+        qty = diff / price
+        suggestions.append({'symbol': h['symbol'], 'quantity_delta': round(qty, 8)})
+    return suggestions
+
+
+@app.get('/portfolio/rebalance')
+async def portfolio_rebalance(strategy: str = 'equal', key: str = Depends(require_key)):
+    return {'strategy': strategy, 'trades': compute_rebalance(strategy)}
 
 
 @app.get('/strategies')
@@ -429,12 +509,45 @@ async def delete_user(api_key: str, user: dict = Depends(require_admin)):
     return {'status': 'ok'}
 
 
+@app.get('/webhooks')
+async def list_webhooks(user: dict = Depends(require_admin)):
+    """Return registered webhook URLs."""
+    return {'urls': load_webhook_urls()}
+
+
+@app.post('/webhooks')
+async def add_webhook(data: dict, user: dict = Depends(require_admin)):
+    url = data.get('url')
+    if not url:
+        raise HTTPException(status_code=400, detail='url required')
+    urls = load_webhook_urls()
+    if url not in urls:
+        urls.append(url)
+    save_webhook_urls(urls)
+    return {'status': 'ok', 'count': len(urls)}
+
+
+@app.delete('/webhooks')
+async def remove_webhook(data: dict, user: dict = Depends(require_admin)):
+    url = data.get('url')
+    urls = load_webhook_urls()
+    if url in urls:
+        urls.remove(url)
+        save_webhook_urls(urls)
+    return {'status': 'ok', 'count': len(urls)}
+
+
 @app.get('/backtest/{symbol}')
 async def run_backtest_api(symbol: str, days: int = 90, user: dict = Depends(require_admin)):
     try:
         result = backtest.run_backtest(symbol, days)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+    conn = get_db()
+    conn.execute('INSERT INTO strategy_history(name, ts, return_pct) VALUES(?,?,?)',
+                 (symbol.upper(), result.get('generated_at'), result.get('return_pct')))
+    conn.commit()
+    conn.close()
     return result
 
 
@@ -483,6 +596,24 @@ async def analytics_report(limit: int = 5, key: str = Depends(require_key)):
         'top_symbols': [
             {'symbol': sym, 'avg_momentum': round(score, 3)} for sym, score in top
         ]
+    }
+
+
+@app.get('/analytics/strategy/{name}')
+async def analytics_strategy(name: str, key: str = Depends(require_key)):
+    """Aggregate historical backtest returns for a strategy."""
+    conn = get_db()
+    rows = conn.execute('SELECT ts, return_pct FROM strategy_history WHERE name=? ORDER BY ts', (name,)).fetchall()
+    conn.close()
+    if not rows:
+        raise HTTPException(status_code=404, detail='Not found')
+    dates = [r[0] for r in rows]
+    returns = [r[1] for r in rows]
+    avg_ret = sum(returns) / len(returns)
+    fig = go.Figure([go.Scatter(x=dates, y=returns, mode='lines')])
+    return {
+        'average_return_pct': avg_ret,
+        'chart_html': fig.to_html(include_plotlyjs=False)
     }
 
 
@@ -556,6 +687,7 @@ def screener_job():
         conn.commit()
         conn.close()
         notify(f"New screener results stored: {js.get('run_id')}")
+        send_custom_webhooks(data)
         if event_loop:
             asyncio.run_coroutine_threadsafe(broadcast_update(data), event_loop)
 
