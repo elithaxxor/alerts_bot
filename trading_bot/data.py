@@ -1,6 +1,5 @@
 import ccxt
 import pandas as pd
-from typing import List
 
 class DataFetcher:
     """Fetch market data from Binance via ccxt."""
