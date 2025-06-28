@@ -93,7 +93,13 @@ class DataFetcher:
             return df.head(limit)
 
         try:
-            data = self.exchange.fetch_ohlcv(self.symbol, timeframe=timeframe, limit=limit)
+            data = record_api_call(
+                "binance",
+                self.exchange.fetch_ohlcv,
+                self.symbol,
+                timeframe=timeframe,
+                limit=limit,
+            )
             df = pd.DataFrame(
                 data,
                 columns=["timestamp", "open", "high", "low", "close", "volume"],

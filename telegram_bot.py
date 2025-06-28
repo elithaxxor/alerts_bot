@@ -3,6 +3,7 @@ import time
 import json
 from pathlib import Path
 import requests
+from crypto_screener_ai.app.monitoring import record_api_call
 from typing import Dict
 
 from crypto_screener_ai.app.backtest import run_backtest
@@ -17,7 +18,13 @@ def send_message(chat_id: int, text: str):
     if not BASE_URL:
         return
     try:
-        requests.post(f"{BASE_URL}/sendMessage", data={'chat_id': chat_id, 'text': text}, timeout=10)
+        record_api_call(
+            "telegram",
+            requests.post,
+            f"{BASE_URL}/sendMessage",
+            data={'chat_id': chat_id, 'text': text},
+            timeout=10,
+        )
     except Exception:
         pass
 
@@ -25,7 +32,7 @@ def send_message(chat_id: int, text: str):
 def fetch_strategy_summary(name: str) -> str:
     url = f"http://localhost:9999/strategies/{name}"
     try:
-        res = requests.get(url, timeout=10)
+        res = record_api_call("dashboard", requests.get, url, timeout=10)
         if res.status_code != 200:
             return "Strategy not found"
         js = res.json()
@@ -62,7 +69,13 @@ def run_bot(poll_interval: int = 5):
     offset = 0
     while True:
         try:
-            resp = requests.get(f"{BASE_URL}/getUpdates", params={'timeout': 30, 'offset': offset+1}, timeout=35)
+            resp = record_api_call(
+                "telegram",
+                requests.get,
+                f"{BASE_URL}/getUpdates",
+                params={'timeout': 30, 'offset': offset + 1},
+                timeout=35,
+            )
             resp.raise_for_status()
             data = resp.json().get('result', [])
             for update in data:

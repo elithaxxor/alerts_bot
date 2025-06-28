@@ -48,3 +48,29 @@ def test_api_metrics(monkeypatch, tmp_path):
     assert monitoring.API_METRICS['binance']['failures'] == 0
     assert monitoring.API_METRICS['binance']['duration'] > 0
 
+
+def test_social_posts_metrics(monkeypatch, tmp_path):
+    from tests.test_dashboard import load_dashboard
+    monitoring = importlib.import_module('crypto_screener_ai.app.monitoring')
+    monitoring.API_METRICS.clear()
+    mod = load_dashboard(tmp_path)
+    mod.fetch_social_posts()
+    assert monitoring.API_METRICS['reddit']['count'] == 1
+    assert monitoring.API_METRICS['reddit']['failures'] == 0
+    assert monitoring.API_METRICS['reddit']['duration'] > 0
+
+
+def test_top25_metrics(monkeypatch):
+    monitoring = importlib.import_module('crypto_screener_ai.app.monitoring')
+    monitoring.API_METRICS.clear()
+    dummy_requests = types.ModuleType('requests')
+    dummy_requests.get = lambda *a, **k: types.SimpleNamespace(json=lambda:[{'symbol':'btc'},{'symbol':'eth'}], raise_for_status=lambda: None)
+    monkeypatch.setitem(sys.modules, 'requests', dummy_requests)
+    sys.modules.pop('crypto_screener_ai.app.run_screener', None)
+    run_screener = importlib.import_module('crypto_screener_ai.app.run_screener')
+    top = run_screener.fetch_top_25_volume()
+    assert top == ['BTC', 'ETH']
+    assert monitoring.API_METRICS['coingecko']['count'] == 1
+    assert monitoring.API_METRICS['coingecko']['failures'] == 0
+    assert monitoring.API_METRICS['coingecko']['duration'] > 0
+
