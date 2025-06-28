@@ -15,21 +15,34 @@ from openai import OpenAI
 
 # ---------- helpers -----------------------------------------------------------
 def fetch_top_25_volume(vs_currency: str = "usd") -> list[str]:
-    """Return list of top volume symbols, using cache when OFFLINE_MODE is set."""
-    cache_path = Path(__file__).resolve().parents[2] / 'data' / 'top25_cache.json'
-    if os.getenv('OFFLINE_MODE') and cache_path.exists():
+    """Return list of symbols sorted by trading volume.
+
+    In normal mode the data is pulled from CoinGecko and written to a small
+    cache.  When the environment variable ``OFFLINE_MODE`` is set or the
+    network request fails the cache is used instead.  This mirrors the
+    behaviour of ``fetch_historical_prices`` in ``backtest.py``.
+    """
+
+    cache_path = Path(__file__).resolve().parents[2] / "data" / "top25_cache.json"
+
+    if os.getenv("OFFLINE_MODE") and cache_path.exists():
         return json.loads(cache_path.read_text())
 
-    url = ("https://api.coingecko.com/api/v3/coins/markets"
-           f"?vs_currency={vs_currency}&order=volume_desc&per_page=25&page=1")
+    url = (
+        "https://api.coingecko.com/api/v3/coins/markets"
+        f"?vs_currency={vs_currency}&order=volume_desc&per_page=25&page=1"
+    )
+
     try:
         res = requests.get(url, timeout=10)
         res.raise_for_status()
-        symbols = [coin["symbol"].upper() for coin in res.json()]
-        cache_path.write_text(json.dumps(symbols))
-        return symbols
+        coins = [coin["symbol"].upper() for coin in res.json()]
+        cache_path.write_text(json.dumps(coins))
+        return coins
     except Exception as exc:
-        print(f"[yellow]⚠️  Could not fetch top-25 volume list ({exc}); continuing with defaults.[/]")
+        print(
+            f"[yellow]⚠️  Could not fetch top-25 volume list ({exc}); continuing with defaults.[/]"
+        )
         if cache_path.exists():
             return json.loads(cache_path.read_text())
         return []
