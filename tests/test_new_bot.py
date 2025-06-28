@@ -1,4 +1,3 @@
-import types
 import pytest
 pytest.importorskip('pandas')
 pytest.importorskip('pandas_ta')
