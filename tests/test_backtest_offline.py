@@ -1,8 +1,10 @@
-import sys, os, json
+import json
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import types, importlib
+import importlib
+import types
 
 
 def test_fetch_historical_prices_offline(tmp_path, monkeypatch):
