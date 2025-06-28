@@ -13,3 +13,4 @@ These additions would expand usability across different regions and devices whil
 4. **Automated Security Audits** – run static analysis on strategy code and dependencies before deployment.
 5. **Offline Mode** – allow limited analysis using cached data when network connectivity is interrupted.
 6. **Community Strategy Hub** – share and rate user-submitted strategies directly from the dashboard.
+7. **Pluggable Strategy Engine** – load strategy classes dynamically so traders can experiment without modifying core code.
