@@ -59,11 +59,13 @@ def send_push(message: str):
     if not token or not user:
         return
     try:
-        requests.post('https://api.pushover.net/1/messages.json', data={
-            'token': token,
-            'user': user,
-            'message': message,
-        }, timeout=10)
+        record_api_call(
+            'pushover',
+            requests.post,
+            'https://api.pushover.net/1/messages.json',
+            data={'token': token, 'user': user, 'message': message},
+            timeout=10,
+        )
     except Exception as exc:
         logger.warning('Push notification failed: %s', exc)
 
@@ -96,7 +98,7 @@ def send_slack(message: str):
     if not url:
         return
     try:
-        requests.post(url, json={'text': message}, timeout=10)
+        record_api_call('slack', requests.post, url, json={'text': message}, timeout=10)
     except Exception as exc:
         logger.warning('Slack alert failed: %s', exc)
 
@@ -107,7 +109,7 @@ def send_discord(message: str):
     if not url:
         return
     try:
-        requests.post(url, json={'content': message}, timeout=10)
+        record_api_call('discord', requests.post, url, json={'content': message}, timeout=10)
     except Exception as exc:
         logger.warning('Discord alert failed: %s', exc)
 
@@ -131,7 +133,14 @@ def send_custom_webhooks(payload: str):
     """POST JSON payload to all registered webhook URLs."""
     for url in load_webhook_urls():
         try:
-            requests.post(url, data=payload, headers={'Content-Type': 'application/json'}, timeout=10)
+            record_api_call(
+                'webhook',
+                requests.post,
+                url,
+                data=payload,
+                headers={'Content-Type': 'application/json'},
+                timeout=10,
+            )
         except Exception as exc:
             logger.warning('Custom webhook %s failed: %s', url, exc)
 

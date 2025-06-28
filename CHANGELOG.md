@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Refactored DataFetcher caching to unify implementation and ensure data
   directory creation.
 - Added API monitoring with `/metrics` endpoint and helper to track upstream usage.
+  Metrics now include failure counts and total duration per service.
 
 ## [0.1.0] - 2024-03-01
 - Initial release with CLI screener and dashboard.
