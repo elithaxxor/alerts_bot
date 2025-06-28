@@ -176,5 +176,7 @@ results are stored:
 - **Offline Mode**: set `OFFLINE_MODE=1` to use cached data when the network is unavailable.
 - **Community Strategy Hub**: share and rate strategies via `/community/strategies`.
 - **Data Export Tools**: `/backtest/{symbol}/export` and `/portfolio/risk/export` provide CSV or JSON downloads.
+- **Pluggable Strategies**: drop custom modules into `strategies/` and select via the backtest API.
+- **Backtest Reports**: `run_backtest` now returns Plotly HTML charts for quick visual analysis.
 
 See CHANGELOG.md for release history and PROPOSAL_NEW_FEATURES.md for upcoming ideas.
