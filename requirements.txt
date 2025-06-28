@@ -11,3 +11,8 @@ sqlalchemy
 slack_sdk
 discord-webhook
 bandit
+ccxt
+pandas
+pandas_ta
+streamlit
+transformers
