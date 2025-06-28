@@ -34,6 +34,7 @@ if st.button("Run Backtest"):
     strategy = SimpleStrategy(df)
     perf = strategy.run()
     st.sidebar.write(f"Backtest Return: {perf}%")
+
 fig = go.Figure()
 fig.add_trace(go.Candlestick(x=df['timestamp'], open=df['open'], high=df['high'],
                              low=df['low'], close=df['close'], name='Price'))

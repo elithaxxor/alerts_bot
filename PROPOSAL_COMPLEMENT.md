@@ -20,3 +20,6 @@ Building upon the existing roadmap, the following additions could further streng
 13. **Cloud Sync for Strategies** – store user strategies in a cloud drive for access across devices.
 14. **Paper Trading Mode** – simulate trades using live data without risking real funds.
 15. **Hardware Wallet Integration** – display balances from Ledger or Trezor devices within the dashboard.
+16. **Realtime Risk Alerts** – monitor volatility spikes and auto-adjust leverage suggestions.
+17. **Portfolio Heatmap** – visualize asset allocation and performance with Plotly.
+18. **Cloud-based Backtesting Farm** – distribute heavy computations across remote workers.
