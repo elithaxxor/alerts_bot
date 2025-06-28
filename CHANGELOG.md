@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Improved top volume fetcher with caching fallback for offline mode.
 - Refactored DataFetcher caching to unify implementation and ensure data
   directory creation.
+- Added API monitoring with `/metrics` endpoint and helper to track upstream usage.
 
 ## [0.1.0] - 2024-03-01
 - Initial release with CLI screener and dashboard.
