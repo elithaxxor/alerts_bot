@@ -26,3 +26,6 @@ Building upon the existing roadmap, the following additions could further streng
 16. **Realtime Risk Alerts** – monitor volatility spikes and auto-adjust leverage suggestions.
 17. **Portfolio Heatmap** – visualize asset allocation and performance with Plotly.
 18. **Cloud-based Backtesting Farm** – distribute heavy computations across remote workers.
+19. **ML Signal Ranking** – score trade setups with a lightweight machine-learning model for prioritisation.
+20. **Cloud Data Pipeline** – stream market data to a managed timeseries database for faster queries.
+21. **Collaborative Workspaces** – share dashboards and backtest results with teammates in real time.
