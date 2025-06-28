@@ -16,10 +16,12 @@ from openai import OpenAI
 
 # ---------- helpers -----------------------------------------------------------
 def fetch_top_25_volume(vs_currency: str = "usd") -> list[str]:
-    """Return top traded symbols with cache fallback."""
-    cache_path = Path(__file__).resolve().parents[2] / "data" / "top25_cache.json"
-    if os.getenv("OFFLINE_MODE") and cache_path.exists():
-        return json.loads(cache_path.read_text())
+    cache = Path(__file__).resolve().parents[2] / "data" / "top25_cache.json"
+    if os.getenv("OFFLINE_MODE") and cache.exists():
+        try:
+            return json.loads(cache.read_text())
+        except Exception:
+            return []
 
     url = (
         "https://api.coingecko.com/api/v3/coins/markets"
@@ -28,15 +30,15 @@ def fetch_top_25_volume(vs_currency: str = "usd") -> list[str]:
     try:
         res = record_api_call("coingecko", requests.get, url, timeout=10)
         res.raise_for_status()
-        symbols = [coin["symbol"].upper() for coin in res.json()]
-        cache_path.write_text(json.dumps(symbols))
-        return symbols
+        return [coin["symbol"].upper() for coin in res.json()]
     except Exception as exc:
-        print(
-            f"[yellow]⚠️  Could not fetch top-25 volume list ({exc}); continuing with defaults.[/]"
-        )
-        if cache_path.exists():
-            return json.loads(cache_path.read_text())
+        print(f"[yellow]⚠️  Could not fetch top-25 volume list ({exc}); "
+              "continuing with defaults.[/]")
+        if cache.exists():
+            try:
+                return json.loads(cache.read_text())
+            except Exception:
+                return []
         return []
 
 # ---------- main --------------------------------------------------------------
