@@ -2,8 +2,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import dashboard
-
 
 def main():
     # run uvicorn on port 9999

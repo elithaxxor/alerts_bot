@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import plotly.graph_objects as go
 from trading_bot.data import DataFetcher
 from trading_bot.indicators import IndicatorCalculator
 from trading_bot.ml import PriceDirectionModel
@@ -35,7 +35,6 @@ if st.button("Run Backtest"):
     perf = strategy.run()
     st.sidebar.write(f"Backtest Return: {perf}%")
 
-import plotly.graph_objects as go
 fig = go.Figure()
 fig.add_trace(go.Candlestick(x=df['timestamp'], open=df['open'], high=df['high'],
                              low=df['low'], close=df['close'], name='Price'))
