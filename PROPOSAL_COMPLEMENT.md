@@ -18,3 +18,5 @@ Building upon the existing roadmap, the following additions could further streng
 11. **Data Export Tools** – allow CSV/JSON exports of backtest and portfolio metrics for external analysis.
 12. **Advanced Analytics Dashboard** – visualise results with interactive charts and custom reports.
 13. **Cloud Sync for Strategies** – store user strategies in a cloud drive for access across devices.
+14. **Paper Trading Mode** – simulate trades using live data without risking real funds.
+15. **Hardware Wallet Integration** – display balances from Ledger or Trezor devices within the dashboard.
