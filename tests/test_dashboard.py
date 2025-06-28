@@ -57,6 +57,21 @@ def load_dashboard(tmp_path):
     dummy_openai.OpenAI = DummyClient
     sys.modules['openai'] = dummy_openai
 
+    dummy_ccxt = types.ModuleType('ccxt')
+    class DummyExchange:
+        def fetch_order_book(self, symbol, limit=20):
+            return {'bids': [], 'asks': []}
+    dummy_ccxt.binance = lambda *a, **k: DummyExchange()
+    sys.modules['ccxt'] = dummy_ccxt
+
+    dummy_plotly = types.ModuleType('plotly')
+    graph_objs = types.ModuleType('plotly.graph_objects')
+    graph_objs.Figure = lambda *a, **k: types.SimpleNamespace(to_html=lambda **k: '<html>')
+    graph_objs.Scatter = object
+    dummy_plotly.graph_objects = graph_objs
+    sys.modules['plotly'] = dummy_plotly
+    sys.modules['plotly.graph_objects'] = graph_objs
+
     # mock fastapi
     dummy_fastapi = types.ModuleType('fastapi')
     class DummyApp:
@@ -115,7 +130,8 @@ def load_dashboard(tmp_path):
     mod = importlib.import_module('crypto_screener_ai.web.dashboard')
     mod.DB_FILE = Path(tmp_path) / 'test.db'
     # clean up to avoid side effects
-    for name in ['requests', 'dotenv', 'rich', 'openai', 'fastapi', 'fastapi.responses',
+    for name in ['requests', 'dotenv', 'rich', 'openai', 'ccxt', 'plotly', 'plotly.graph_objects',
+                 'fastapi', 'fastapi.responses',
                  'fastapi.security.api_key', 'apscheduler.schedulers.background',
                  'apscheduler.jobstores.sqlalchemy']:
         sys.modules.pop(name, None)

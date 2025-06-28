@@ -32,6 +32,11 @@
       <h2>Analytics</h2>
       <div id="chart" style="width:260px;height:200px;"></div>
     </div>
+    <div class="widget" draggable="true" data-widget="orderbook">
+      <h2>Order Book</h2>
+      <input id="obPair" value="BTC/USDT" /> <button onclick="loadOrderbook()">Load</button>
+      <div id="obChart" style="width:260px;height:200px;"></div>
+    </div>
   </div>
   <script>
     const KEY = 'demo';
@@ -100,11 +105,30 @@
       document.getElementById('answer').textContent = data.response;
     }
 
+    async function loadOrderbook() {
+      const pair = document.getElementById('obPair').value;
+      const resp = await fetch('/orderbook/' + encodeURIComponent(pair));
+      const data = await resp.json();
+      const asks = data.asks.slice(0,20);
+      const bids = data.bids.slice(0,20);
+      function cum(arr){let s=0;return arr.map(v=>s+=v);} 
+      const askPrices = asks.map(a=>a[0]);
+      const bidPrices = bids.map(b=>b[0]);
+      const askQty = cum(asks.map(a=>a[1]));
+      const bidQty = cum(bids.map(b=>b[1]));
+      const traces = [
+        {x: bidPrices, y: bidQty, name:'bids', mode:'lines'},
+        {x: askPrices, y: askQty, name:'asks', mode:'lines'}
+      ];
+      Plotly.newPlot('obChart', traces, {margin:{t:30}});
+    }
+
     loadLayout();
     enableDrag();
     loadLatest();
     loadPnl();
     loadAnalytics();
+    loadOrderbook();
   </script>
 </body>
 </html>
