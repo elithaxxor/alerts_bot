@@ -20,3 +20,6 @@ Building upon the existing roadmap, the following additions could further streng
 13. **Cloud Sync for Strategies** – store user strategies in a cloud drive for access across devices.
 14. **Paper Trading Mode** – simulate trades using live data without risking real funds.
 15. **Hardware Wallet Integration** – display balances from Ledger or Trezor devices within the dashboard.
+16. **Custom Alert Sounds** – allow users to upload audio clips for personalized notifications.
+17. **Historical Market Snapshots** – store daily OHLCV data for offline research and backtests.
+18. **Strategy Performance Rankings** – leaderboard showing top strategies by ROI over various periods.
