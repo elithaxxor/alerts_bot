@@ -7,7 +7,12 @@ New features:
   • Automatically appends top-25-by-volume (CoinGecko) to the watch-list
   • Adds Task 8 asking for five best ideas in next 30 min
 """
-import json, os, uuid, datetime, argparse, requests
+import argparse
+import datetime
+import json
+import os
+import requests
+import uuid
 from pathlib import Path
 from dotenv import load_dotenv
 from rich import print
